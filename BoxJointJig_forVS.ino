@@ -73,11 +73,6 @@ void setup() {
   display.setCursor(0,0);
   display.display();
 
-
-// setup joystick button
-//  pinMode(SW_pin, INPUT);
-//  digitalWrite(SW_pin, HIGH);
-//  
 }
 
 void loop() {
@@ -87,7 +82,8 @@ void loop() {
   // 6 lines of 13 chars 
   display.clearDisplay();   // clears the screen and buffer 
 
-
+//////////////////////////////////////////////////////////
+// ENCODER CHECKING/READING ROUTINE //////////////////////
   value += encoder->getValue();
   
   if (value != last) {
@@ -117,6 +113,8 @@ void loop() {
         break;
     }
   }
+  //////////////////////////////////////////////////////////////
+
   display.print(String(_b) + "\n" + line2 + line3 + line4);
     
   display.display();
