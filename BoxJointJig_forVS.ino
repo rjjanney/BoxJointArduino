@@ -23,11 +23,10 @@
 Adafruit_PCD8544 display = Adafruit_PCD8544(29, 27, 25, 23, 21);
 
 // setup strings
-int kerf[4] = {0, 0, 0, 0};
-int dist[4] = {2, 2, 2, 2};
-int test;
-int _b;
+int kerfDist[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 int activeDigit = 0;
+bool loopFlag = false;
+bool readyToCut = false;
 
 // pwm capable pin for lcd backlight dimming
 int ledPin = 2;
@@ -49,6 +48,38 @@ int16_t last, value;
 
 void timerIsr() {
   encoder->service();
+}
+
+void cutRoutine(int valueArray[], String units) {
+	display.clearDisplay();
+	float kerfCut = valueArray[0] * 0.1 + valueArray[1] * 0.01 + valueArray[2] * 0.001 + valueArray[3] * 0.0001;
+	float distCut = valueArray[4] * 0.1 + valueArray[5] * 0.01 + valueArray[6] * 0.001 + valueArray[7] * 0.0001;
+	if (kerfCut > distCut) {
+		display.print("DISTANCE LESS\nTHAN KERF");
+		display.display();
+		delay(1000);
+	}
+	else if (kerfCut == 0.0) {
+		display.print("KERF = 0?!?!?");
+		display.display();
+		delay(1000);
+	}
+	else {
+		// here's where all the motor control and calculations go
+		display.clearDisplay();
+		display.print("Here we go!!!");
+		display.display();
+		delay(2000);
+/*
+200 steps per revolution 
+1 revolution = 1/16"
+1/16 / 200 = 1/16 * 1/200 = 1/3200" each step = .0003125" per step
+0.0079375 mm per step
+126 (approx) steps per mm
+*/
+	}
+	readyToCut = false;
+	return;
 }
 
 void setup() {
@@ -89,9 +120,10 @@ void loop() {
   value += encoder->getValue();
   
   if (value != last) {
-    if (value < 0){value += 1000;}
-    last = floor(abs(value/2.8));
-    // line2 = "Hi " + String(last%10) + "\n";
+	  if (value < 0) { value += 1000; }
+	  last = floor(abs(value / 2.8));
+	  // line2 = "Hi " + String(last%10) + "\n";
+	  kerfDist[activeDigit] = last % 10;
   }
   
   ClickEncoder::Button b = encoder->getButton();
@@ -112,49 +144,63 @@ void loop() {
         break;
       case ClickEncoder::Clicked:
         // move on to next digit or next field
-       activeDigit ++;
-	   if (activeDigit > 7) { activeDigit = 0; }
-        break;
-      case ClickEncoder::Held:
-        // move decimal point to left of cursor
-        _b += 100;
-        break;
-    }
-  }
+		activeDigit++;
+		if (activeDigit > 7) {
+			activeDigit = 0;
+			loopFlag = true;
+		}
+		if (loopFlag) {		// If this is not first time through, 
+							// keep values when activating them
+			value = floor(kerfDist[activeDigit] * 3);
+		}
+		else {				// First time through, set initial value to 0 for each digit
+
+			value = 0;
+		}
+		break;
+	case ClickEncoder::Held:
+		// Ready to start cutting
+		readyToCut = true;
+		break;
+	}
+
   //////////////////////////////////////////////////////////////
   
-  
-  //display.setTextColor(WHITE, BLACK); // 'inverted' text
-  display.print(line1 + line2);
-  for (int j = 0; j < 4; ++j) {
-	  if (j == activeDigit) {
-		  display.setTextColor(WHITE, BLACK); // 'inverted' text
-		  display.print(kerf[j]);
-		  display.setTextColor(BLACK); // back to normal text
-	  }
-	  else {
-		  display.print(kerf[j]);
-	  }
-  }
-  display.print(inchesOrMilimeters);
-  display.print(line3);
-  // TO SET UP FOR "ACTIVE" character being edited, array 0-7,
-  // corresponding to these print statements
-  for (int j = 4; j < 8; ++j) {
-	  if (j == activeDigit) {
-		  display.setTextColor(WHITE, BLACK); // 'inverted' text
-		  display.print(dist[j-4]);
-		  display.setTextColor(BLACK); // back to normal text
-	  }
-	  else {
-		  display.print(dist[j - 4]);
-	  }
-  }
+ //------------------------------------------------------------------//
+ //                    USER INTERFACE                                //
+	display.print(line1 + line2);
+	for (int j = 0; j < 4; ++j) {
+		if (j == activeDigit) {
+			display.setTextColor(WHITE, BLACK); // 'inverted' text
+			display.print(kerfDist[j]);
+			display.setTextColor(BLACK); // back to normal text
+		}
+		else {
+			display.print(kerfDist[j]);
+		}
+	}
+	display.print(inchesOrMilimeters);
+	display.print(line3);
+	// TO SET UP FOR "ACTIVE" character being edited, array 0-7,
+	// corresponding to these print statements
+	for (int j = 4; j < 8; ++j) {
+		if (j == activeDigit) {
+			display.setTextColor(WHITE, BLACK); // 'inverted' text
+			display.print(kerfDist[j]);
+			display.setTextColor(BLACK); // back to normal text
+		}
+		else {
+			display.print(kerfDist[j]);
+		}
+	}
   display.print(inchesOrMilimeters);
   display.print(line4);
     
   display.display();
   
+  if (readyToCut) {
+	  cutRoutine(kerfDist, inchesOrMilimeters);
+  }
 
 }
 
