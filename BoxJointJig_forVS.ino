@@ -59,7 +59,7 @@ int16_t last, value;
 
 void goForward(Button& b) {
 	while (forward.isPressed()) {
-		motor.step(100, FORWARD, DOUBLE);
+		motor.step(100, BACKWARD, DOUBLE);
 	}
 	return;
 }
@@ -67,12 +67,12 @@ void goForward(Button& b) {
 void goBackward(Button& b) {
 	escapeButton = true;
 	while (backward.isPressed()) {
-		motor.step(100, BACKWARD, DOUBLE);
+		motor.step(100, FORWARD, DOUBLE);
 	}
 }
 
 void moveSled(int numberOfSteps) {
-	motor.step(numberOfSteps, FORWARD, DOUBLE);
+	motor.step(numberOfSteps, BACKWARD, DOUBLE);
 	return;
 }
 
