@@ -30,27 +30,11 @@ bool readyToCut = false;
 
 // setup buttons
 
-Button forward = Button(12);
-Button backward = Button(13);
-Button action = Button(14);
+Button forward = Button(39, BUTTON_PULLUP_INTERNAL, true, 30);
+Button backward = Button(41, BUTTON_PULLUP_INTERNAL, true, 30);
+Button action = Button(43, BUTTON_PULLUP_INTERNAL, true, 30);
 
-void goForward(Button& b) {
-	Serial.print("onPress: ");
-	Serial.println(b.pin);
-	// will print out "onPress: 12"
-}
 
-void goBackward(Button& b) {
-	Serial.print("onPress: ");
-	Serial.println(b.pin);
-	// will print out "onPress: 12"
-}
-
-void goNextCut(Button& b) {
-	Serial.print("onPress: ");
-	Serial.println(b.pin);
-	// will print out "onPress: 12"
-}
 
 // pwm capable pin for lcd backlight dimming
 int ledPin = 2;
@@ -69,6 +53,25 @@ AF_Stepper motor(200, 2);
 // part of setup of rotary encoder with button
 ClickEncoder *encoder;
 int16_t last, value;
+
+void goForward(Button& b) {
+	while (forward.isPressed()) {
+		motor.step(100, FORWARD, DOUBLE);
+	}
+	return;
+}
+
+void goBackward(Button& b) {
+	while (backward.isPressed()) {
+		motor.step(100, BACKWARD, DOUBLE);
+	}
+}
+
+void goNextCut(Button& b) {
+	Serial.print("onPress: ");
+	Serial.println(b.pin);
+	// will print out "onPress: 12"
+}
 
 void timerIsr() {
   encoder->service();
@@ -116,10 +119,15 @@ void setup() {
   
   last = -1;
 
+  // motor setup
+  motor.setSpeed(100);
+
+
   // Assign callback function
   forward.pressHandler(goForward);
   backward.pressHandler(goBackward);
   action.pressHandler(goNextCut);
+  
   display.begin();
   
   // you can change the contrast around to adapt the display
@@ -139,6 +147,11 @@ void setup() {
 
 void loop() {
 
+	// update the buttons' internals
+	forward.process();
+	backward.process();
+	action.process();
+
 	// text display tests
 	// at text size 1 you have 80 characters
 	// 6 lines of 13 chars 
@@ -154,6 +167,7 @@ void loop() {
 		// line2 = "Hi " + String(last%10) + "\n";
 		kerfDist[activeDigit] = last % 10;
 	}
+
 
 	ClickEncoder::Button b = encoder->getButton();
 	if (b != ClickEncoder::Open) {
@@ -192,13 +206,9 @@ void loop() {
 			readyToCut = true;
 			break;
 		}
-
+	}
 		//////////////////////////////////////////////////////////////
 
-		// update the buttons' internals
-		forward.process();
-		backward.process();
-		action.process();
 
 		//------------------------------------------------------------------//
 		//                    USER INTERFACE                                //
@@ -237,5 +247,5 @@ void loop() {
 		}
 
 	}
-}
+
 
