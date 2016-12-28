@@ -23,18 +23,18 @@
 Adafruit_PCD8544 display = Adafruit_PCD8544(29, 27, 25, 23, 21);
 
 // setup strings
-int kerf[] = {0, 0, 0, 0};
-int dist[] = {0, 0, 0, 0};
+int kerf[4] = {0, 0, 0, 0};
+int dist[4] = {2, 2, 2, 2};
 int test;
-int _b = 0;
+int _b;
 
 // pwm capable pin for lcd backlight dimming
 int ledPin = 2;
 
 // Strings for simple UI
-String line1 = "Box Joint Ctl\n";
-String line2 = "Kerf .\"\n";
-String line3 = "Dist .\"\n";
+String line1 = "BOX JOINT CTL\n\n";
+String line2 = "KERF .";
+String line3 = "DIST .";
 String line4 = "\nCUT NOW";
 
 // Connect a stepper motor with 200 steps per revolution (1.8 degree)
@@ -89,7 +89,7 @@ void loop() {
   if (value != last) {
     if (value < 0){value += 1000;}
     last = floor(abs(value/2.8));
-    line2 = "Hi " + String(last%10) + "\n";
+    // line2 = "Hi " + String(last%10) + "\n";
   }
   
   ClickEncoder::Button b = encoder->getButton();
@@ -115,7 +115,17 @@ void loop() {
   }
   //////////////////////////////////////////////////////////////
 
-  display.print(String(_b) + "\n" + line2 + line3 + line4);
+  display.print(line1 + line2);
+  for (int j = 0; j < 4; ++j) {
+	  display.print(kerf[j]);
+  }
+  display.print("\"\n");
+  display.print(line3);
+  for (int j = 0; j < 4; ++j) {
+	  display.print(dist[j]);
+  }
+  display.print("\"\n");
+  display.print(line4);
     
   display.display();
   
