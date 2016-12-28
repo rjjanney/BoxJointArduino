@@ -23,10 +23,13 @@
 Adafruit_PCD8544 display = Adafruit_PCD8544(29, 27, 25, 23, 21);
 
 // setup strings
-int kerfDist[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+int kerfDist[8] = {1, 0, 0, 0, 3, 0, 0, 0};
 int activeDigit = 0;
+const double STEPDISTANCE = .0003125;
 bool loopFlag = false;
 bool readyToCut = false;
+bool stopSign = true;
+bool escapeButton = false;
 
 // setup buttons
 
@@ -48,7 +51,7 @@ String inchesOrMilimeters = "\"\n"; // keeps track of unit scale
 
 // Connect a stepper motor with 200 steps per revolution (1.8 degree)
 // to motor port #2 (M3 and M4)
-AF_Stepper motor(200, 2);
+AF_Stepper motor(100, 2);
 
 // part of setup of rotary encoder with button
 ClickEncoder *encoder;
@@ -62,16 +65,34 @@ void goForward(Button& b) {
 }
 
 void goBackward(Button& b) {
+	escapeButton = true;
 	while (backward.isPressed()) {
 		motor.step(100, BACKWARD, DOUBLE);
 	}
 }
 
-void goNextCut(Button& b) {
-	Serial.print("onPress: ");
-	Serial.println(b.pin);
-	// will print out "onPress: 12"
+void moveSled(int numberOfSteps) {
+	motor.step(numberOfSteps, FORWARD, DOUBLE);
+	return;
 }
+
+void goNextCut(Button& b) {
+	stopSign = false;
+}
+
+void delayPrint(String message) {
+	display.clearDisplay();
+	display.print(message);
+	display.display();
+	delay(100);
+	return;
+}
+
+int stepsToGo(double distance) {
+	return ceil(distance / STEPDISTANCE);
+}
+
+
 
 void timerIsr() {
   encoder->service();
@@ -79,37 +100,63 @@ void timerIsr() {
 
 void cutRoutine(int valueArray[], String units) {
 	display.clearDisplay();
-	float kerfCut = valueArray[0] * 0.1 + valueArray[1] * 0.01 + valueArray[2] * 0.001 + valueArray[3] * 0.0001;
-	float distCut = valueArray[4] * 0.1 + valueArray[5] * 0.01 + valueArray[6] * 0.001 + valueArray[7] * 0.0001;
+	double kerfCut = valueArray[0] * 0.1 + valueArray[1] * 0.01 + valueArray[2] * 0.001 + valueArray[3] * 0.0001;
+	double distCut = valueArray[4] * 0.1 + valueArray[5] * 0.01 + valueArray[6] * 0.001 + valueArray[7] * 0.0001;
 	if (kerfCut > distCut) {
-		display.print("DISTANCE LESS\nTHAN KERF");
-		display.display();
-		delay(1000);
+		delayPrint("DISTANCE LESS\nTHAN KERF");
+		readyToCut = false;
+		return;
 	}
 	else if (kerfCut == 0.0) {
-		display.print("KERF = 0?!?!?");
-		display.display();
-		delay(1000);
+		delayPrint("KERF = 0?!?!?");
+		readyToCut = false;
+		return;
 	}
 	else {
 		// here's where all the motor control and calculations go
-
-
-		display.clearDisplay();
-		display.print("Here we go!!!");
-		display.display();
-		delay(2000);
-/*
-200 steps per revolution 
-1 revolution = 1/16"
-1/16 / 200 = 1/16 * 1/200 = 1/3200" each step = .0003125" per step
-0.0079375 mm per step
-126 (approx) steps per mm
-*/
+		// figure out waypoints as seq of array values (motor steps)
+		while (!escapeButton) {
+			double toGo = distCut - kerfCut;
+			while (toGo > 0) {
+				if (toGo > kerfCut) {
+					delayPrint("WAIT - MOVING SLED kerf dist");
+					moveSled(stepsToGo(kerfCut));
+					String stepsReturn = String(stepsToGo(kerfCut));
+					delayPrint(stepsReturn);
+					toGo -= kerfCut;
+					stopSign = true;
+					while (stopSign) {
+						backward.process();
+						action.process();
+					}
+				}
+				else {
+					delayPrint("WAIT - MOVING SLED the rest");
+					moveSled(stepsToGo(toGo));
+					delayPrint("CUT NOW!");
+					stopSign = true;
+					while (stopSign) { 
+						backward.process();
+						action.process();
+					}
+					toGo = 0;
+				}
+			}
+			delayPrint("WAIT - MOVING SLED cut distance plus kerf");
+			moveSled(stepsToGo(distCut + kerfCut));
+			delayPrint("CUT NOW!");
+			stopSign = true;
+			while (stopSign) {
+				backward.process();
+				action.process();
+			}
+		}
+		
+		readyToCut = false;
+		return;
 	}
-	readyToCut = false;
-	return;
 }
+
 
 void setup() {
   encoder = new ClickEncoder(30, 31, 32);
@@ -150,6 +197,7 @@ void loop() {
 	// update the buttons' internals
 	forward.process();
 	backward.process();
+	escapeButton = false;
 	action.process();
 
 	// text display tests
