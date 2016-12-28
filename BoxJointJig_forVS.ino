@@ -28,6 +28,30 @@ int activeDigit = 0;
 bool loopFlag = false;
 bool readyToCut = false;
 
+// setup buttons
+
+Button forward = Button(12);
+Button backward = Button(13);
+Button action = Button(14);
+
+void goForward(Button& b) {
+	Serial.print("onPress: ");
+	Serial.println(b.pin);
+	// will print out "onPress: 12"
+}
+
+void goBackward(Button& b) {
+	Serial.print("onPress: ");
+	Serial.println(b.pin);
+	// will print out "onPress: 12"
+}
+
+void goNextCut(Button& b) {
+	Serial.print("onPress: ");
+	Serial.println(b.pin);
+	// will print out "onPress: 12"
+}
+
 // pwm capable pin for lcd backlight dimming
 int ledPin = 2;
 
@@ -66,6 +90,8 @@ void cutRoutine(int valueArray[], String units) {
 	}
 	else {
 		// here's where all the motor control and calculations go
+
+
 		display.clearDisplay();
 		display.print("Here we go!!!");
 		display.display();
@@ -89,8 +115,11 @@ void setup() {
   Timer1.attachInterrupt(timerIsr); 
   
   last = -1;
-  
-    
+
+  // Assign callback function
+  forward.pressHandler(goForward);
+  backward.pressHandler(goBackward);
+  action.pressHandler(goNextCut);
   display.begin();
   
   // you can change the contrast around to adapt the display
@@ -110,97 +139,103 @@ void setup() {
 
 void loop() {
 
-  // text display tests
-  // at text size 1 you have 80 characters
-  // 6 lines of 13 chars 
-  display.clearDisplay();   // clears the screen and buffer 
+	// text display tests
+	// at text size 1 you have 80 characters
+	// 6 lines of 13 chars 
+	display.clearDisplay();   // clears the screen and buffer 
 
-//////////////////////////////////////////////////////////
-// ENCODER CHECKING/READING ROUTINE //////////////////////
-  value += encoder->getValue();
-  
-  if (value != last) {
-	  if (value < 0) { value += 1000; }
-	  last = floor(abs(value / 2.8));
-	  // line2 = "Hi " + String(last%10) + "\n";
-	  kerfDist[activeDigit] = last % 10;
-  }
-  
-  ClickEncoder::Button b = encoder->getButton();
-  if (b != ClickEncoder::Open) {
-    #define VERBOSECASE(label);
-    switch (b) {
-      VERBOSECASE(ClickEncoder::Pressed);
-      VERBOSECASE(ClickEncoder::Released)
-      case ClickEncoder::DoubleClicked:
-        // change inches to mm, in string and in calculations
-        // set up a units flag variable
-		  if (inchesOrMilimeters == "\"\n") {
-			  inchesOrMilimeters = "mm\n";
-		  }
-		  else {
-			  inchesOrMilimeters = "\"\n";
-		  }
-        break;
-      case ClickEncoder::Clicked:
-        // move on to next digit or next field
-		activeDigit++;
-		if (activeDigit > 7) {
-			activeDigit = 0;
-			loopFlag = true;
-		}
-		if (loopFlag) {		// If this is not first time through, 
-							// keep values when activating them
-			value = floor(kerfDist[activeDigit] * 3);
-		}
-		else {				// First time through, set initial value to 0 for each digit
+  //////////////////////////////////////////////////////////
+  // ENCODER CHECKING/READING ROUTINE //////////////////////
+	value += encoder->getValue();
 
-			value = 0;
-		}
-		break;
-	case ClickEncoder::Held:
-		// Ready to start cutting
-		readyToCut = true;
-		break;
+	if (value != last) {
+		if (value < 0) { value += 1000; }
+		last = floor(abs(value / 2.8));
+		// line2 = "Hi " + String(last%10) + "\n";
+		kerfDist[activeDigit] = last % 10;
 	}
 
-  //////////////////////////////////////////////////////////////
-  
- //------------------------------------------------------------------//
- //                    USER INTERFACE                                //
-	display.print(line1 + line2);
-	for (int j = 0; j < 4; ++j) {
-		if (j == activeDigit) {
-			display.setTextColor(WHITE, BLACK); // 'inverted' text
-			display.print(kerfDist[j]);
-			display.setTextColor(BLACK); // back to normal text
-		}
-		else {
-			display.print(kerfDist[j]);
-		}
-	}
-	display.print(inchesOrMilimeters);
-	display.print(line3);
-	// TO SET UP FOR "ACTIVE" character being edited, array 0-7,
-	// corresponding to these print statements
-	for (int j = 4; j < 8; ++j) {
-		if (j == activeDigit) {
-			display.setTextColor(WHITE, BLACK); // 'inverted' text
-			display.print(kerfDist[j]);
-			display.setTextColor(BLACK); // back to normal text
-		}
-		else {
-			display.print(kerfDist[j]);
-		}
-	}
-  display.print(inchesOrMilimeters);
-  display.print(line4);
-    
-  display.display();
-  
-  if (readyToCut) {
-	  cutRoutine(kerfDist, inchesOrMilimeters);
-  }
+	ClickEncoder::Button b = encoder->getButton();
+	if (b != ClickEncoder::Open) {
+#define VERBOSECASE(label);
+		switch (b) {
+			VERBOSECASE(ClickEncoder::Pressed);
+			VERBOSECASE(ClickEncoder::Released)
+		case ClickEncoder::DoubleClicked:
+			// change inches to mm, in string and in calculations
+			// set up a units flag variable
+			if (inchesOrMilimeters == "\"\n") {
+				inchesOrMilimeters = "mm\n";
+			}
+			else {
+				inchesOrMilimeters = "\"\n";
+			}
+			break;
+		case ClickEncoder::Clicked:
+			// move on to next digit or next field
+			activeDigit++;
+			if (activeDigit > 7) {
+				activeDigit = 0;
+				loopFlag = true;
+			}
+			if (loopFlag) {		// If this is not first time through, 
+								// keep values when activating them
+				value = floor(kerfDist[activeDigit] * 3);
+			}
+			else {				// First time through, set initial value to 0 for each digit
 
+				value = 0;
+			}
+			break;
+		case ClickEncoder::Held:
+			// Ready to start cutting
+			readyToCut = true;
+			break;
+		}
+
+		//////////////////////////////////////////////////////////////
+
+		// update the buttons' internals
+		forward.process();
+		backward.process();
+		action.process();
+
+		//------------------------------------------------------------------//
+		//                    USER INTERFACE                                //
+		display.print(line1 + line2);
+		for (int j = 0; j < 4; ++j) {
+			if (j == activeDigit) {
+				display.setTextColor(WHITE, BLACK); // 'inverted' text
+				display.print(kerfDist[j]);
+				display.setTextColor(BLACK); // back to normal text
+			}
+			else {
+				display.print(kerfDist[j]);
+			}
+		}
+		display.print(inchesOrMilimeters);
+		display.print(line3);
+		// TO SET UP FOR "ACTIVE" character being edited, array 0-7,
+		// corresponding to these print statements
+		for (int j = 4; j < 8; ++j) {
+			if (j == activeDigit) {
+				display.setTextColor(WHITE, BLACK); // 'inverted' text
+				display.print(kerfDist[j]);
+				display.setTextColor(BLACK); // back to normal text
+			}
+			else {
+				display.print(kerfDist[j]);
+			}
+		}
+		display.print(inchesOrMilimeters);
+		display.print(line4);
+
+		display.display();
+
+		if (readyToCut) {
+			cutRoutine(kerfDist, inchesOrMilimeters);
+		}
+
+	}
 }
 
