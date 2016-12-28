@@ -27,15 +27,17 @@ int kerf[4] = {0, 0, 0, 0};
 int dist[4] = {2, 2, 2, 2};
 int test;
 int _b;
+int activeDigit = 0;
 
 // pwm capable pin for lcd backlight dimming
 int ledPin = 2;
 
 // Strings for simple UI
 String line1 = "BOX JOINT CTL\n\n";
-String line2 = "KERF .";
-String line3 = "DIST .";
+String line2 = " KERF .";
+String line3 = " DIST .";
 String line4 = "\nCUT NOW";
+String inchesOrMilimeters = "\"\n"; // keeps track of unit scale
 
 // Connect a stepper motor with 200 steps per revolution (1.8 degree)
 // to motor port #2 (M3 and M4)
@@ -101,11 +103,17 @@ void loop() {
       case ClickEncoder::DoubleClicked:
         // change inches to mm, in string and in calculations
         // set up a units flag variable
-        _b += 1;
+		  if (inchesOrMilimeters == "\"\n") {
+			  inchesOrMilimeters = "mm\n";
+		  }
+		  else {
+			  inchesOrMilimeters = "\"\n";
+		  }
         break;
       case ClickEncoder::Clicked:
         // move on to next digit or next field
-        _b += 10;
+       activeDigit ++;
+	   if (activeDigit > 7) { activeDigit = 0; }
         break;
       case ClickEncoder::Held:
         // move decimal point to left of cursor
@@ -114,17 +122,35 @@ void loop() {
     }
   }
   //////////////////////////////////////////////////////////////
-
+  
+  
+  //display.setTextColor(WHITE, BLACK); // 'inverted' text
   display.print(line1 + line2);
   for (int j = 0; j < 4; ++j) {
-	  display.print(kerf[j]);
+	  if (j == activeDigit) {
+		  display.setTextColor(WHITE, BLACK); // 'inverted' text
+		  display.print(kerf[j]);
+		  display.setTextColor(BLACK); // back to normal text
+	  }
+	  else {
+		  display.print(kerf[j]);
+	  }
   }
-  display.print("\"\n");
+  display.print(inchesOrMilimeters);
   display.print(line3);
-  for (int j = 0; j < 4; ++j) {
-	  display.print(dist[j]);
+  // TO SET UP FOR "ACTIVE" character being edited, array 0-7,
+  // corresponding to these print statements
+  for (int j = 4; j < 8; ++j) {
+	  if (j == activeDigit) {
+		  display.setTextColor(WHITE, BLACK); // 'inverted' text
+		  display.print(dist[j-4]);
+		  display.setTextColor(BLACK); // back to normal text
+	  }
+	  else {
+		  display.print(dist[j - 4]);
+	  }
   }
-  display.print("\"\n");
+  display.print(inchesOrMilimeters);
   display.print(line4);
     
   display.display();
