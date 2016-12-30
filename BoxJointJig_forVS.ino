@@ -43,7 +43,7 @@ Button action = Button(43, BUTTON_PULLUP_INTERNAL, true, 30);
 int ledPin = 2;
 
 // Strings for simple UI
-String line1 = "BOX JOINT CTL\n\n";
+String line1 = "BOX JOINT CTL\n\n\n";
 String line2 = " KERF .";
 String line3 = " DIST .";
 String line4 = "\nCUT NOW";
@@ -103,7 +103,7 @@ void cutRoutine(int valueArray[], String units) {
 	double kerfCut = valueArray[0] * 0.1 + valueArray[1] * 0.01 + valueArray[2] * 0.001 + valueArray[3] * 0.0001;
 	double distCut = valueArray[4] * 0.1 + valueArray[5] * 0.01 + valueArray[6] * 0.001 + valueArray[7] * 0.0001;
 	if (kerfCut > distCut) {
-		delayPrint("DISTANCE LESS\nTHAN KERF");
+		delayPrint("\n\n\nDISTANCE LESS\nTHAN KERF");
 		readyToCut = false;
 		return;
 	}
@@ -119,10 +119,10 @@ void cutRoutine(int valueArray[], String units) {
 			double toGo = distCut - kerfCut;
 			while (toGo > 0) {
 				if (toGo > kerfCut) {
-					delayPrint("WAIT - MOVING SLED kerf dist");
+					delayPrint("WAIT\n\n\nMOVING\nkerf dist");
 					moveSled(stepsToGo(kerfCut));
 					String stepsReturn = String(stepsToGo(kerfCut));
-					delayPrint(stepsReturn);
+					delayPrint("Moved " + stepsReturn);
 					toGo -= kerfCut;
 					stopSign = true;
 					while (stopSign) {
@@ -131,9 +131,10 @@ void cutRoutine(int valueArray[], String units) {
 					}
 				}
 				else {
-					delayPrint("WAIT - MOVING SLED the rest");
+					delayPrint("WAIT\n\n\nMOVING\nthe rest");
 					moveSled(stepsToGo(toGo));
-					delayPrint("CUT NOW!");
+					String stepsReturn = String(stepsToGo(toGo));
+					delayPrint("Moved " + stepsReturn);
 					stopSign = true;
 					while (stopSign) { 
 						backward.process();
@@ -142,9 +143,10 @@ void cutRoutine(int valueArray[], String units) {
 					toGo = 0;
 				}
 			}
-			delayPrint("WAIT - MOVING SLED cut distance plus kerf");
+			delayPrint("WAIT\n\n\nMOVING\ndist + kerf");
 			moveSled(stepsToGo(distCut + kerfCut));
-			delayPrint("CUT NOW!");
+			String stepsReturn = String(stepsToGo(distCut + kerfCut));
+			delayPrint("Moved " + stepsReturn);
 			stopSign = true;
 			while (stopSign) {
 				backward.process();
@@ -286,7 +288,7 @@ void loop() {
 			}
 		}
 		display.print(inchesOrMilimeters);
-		display.print(line4);
+		//display.print(line4);
 
 		display.display();
 
